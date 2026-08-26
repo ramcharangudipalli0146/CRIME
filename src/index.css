@@ -1,0 +1,66 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-ink-950 text-gray-200 font-sans antialiased;
+  }
+  * {
+    @apply border-ink-700;
+  }
+}
+
+@layer components {
+  .glass-panel {
+    @apply bg-ink-850/80 backdrop-blur-md border border-ink-600/50 rounded-xl;
+  }
+  .solid-panel {
+    @apply bg-ink-800 border border-ink-600/50 rounded-xl;
+  }
+  .btn-primary {
+    @apply px-4 py-2 bg-accent-600 hover:bg-accent-500 text-white font-medium rounded-lg transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-secondary {
+    @apply px-4 py-2 bg-ink-700 hover:bg-ink-600 text-gray-200 font-medium rounded-lg transition-colors duration-150 border border-ink-600;
+  }
+  .btn-ghost {
+    @apply px-3 py-1.5 text-gray-400 hover:text-gray-200 hover:bg-ink-700 rounded-lg transition-colors duration-150;
+  }
+  .input-field {
+    @apply w-full px-3 py-2 bg-ink-900 border border-ink-600 rounded-lg text-gray-200 placeholder-gray-500 focus:outline-none focus:border-accent-500 focus:ring-1 focus:ring-accent-500 transition-colors;
+  }
+  .badge {
+    @apply inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-md;
+  }
+  .nav-item {
+    @apply flex items-center gap-3 px-3 py-2 rounded-lg text-gray-400 hover:text-gray-100 hover:bg-ink-700 transition-colors duration-150 cursor-pointer;
+  }
+  .nav-item-active {
+    @apply text-white bg-accent-600/20 border border-accent-500/30;
+  }
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #0b0f1a;
+}
+::-webkit-scrollbar-thumb {
+  background: #273042;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3a4555;
+}
+
+/* Cytoscape graph */
+#cy {
+  width: 100%;
+  height: 100%;
+}
