@@ -1,0 +1,17 @@
+# Normalise line endings. Files added through the GitHub web UI arrive as CRLF
+# while a local checkout produces LF, which made all 43 tracked source files show
+# up as fully rewritten in `git status` and hid the real changes.
+* text=auto eol=lf
+
+# Binary / generated assets that must never be line-ending converted.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+
+# Collapse the lockfile in GitHub's diff view; it is still versioned and still
+# diffable locally.
+package-lock.json linguist-generated=true

@@ -13,7 +13,9 @@ permissions:
 
 concurrency:
   group: pages
-  cancel-in-progress: true
+  # Never cancel a deploy that is already publishing - a half-cancelled Pages
+  # deployment can leave the live site in a broken state.
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -29,17 +31,19 @@ jobs:
           node-version: 22
           cache: npm
 
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
       - name: Install dependencies
         run: npm ci
 
       - name: Build
         run: npm run build
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v4
+        # v3 is the latest major of this action. Pinning a version that does not
+        # exist makes the job fail before it can publish anything.
+        uses: actions/upload-pages-artifact@v3
         with:
           path: ./dist
 

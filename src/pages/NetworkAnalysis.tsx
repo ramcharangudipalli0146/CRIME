@@ -62,6 +62,36 @@ export function NetworkAnalysis() {
   const [visibleRelTypes, setVisibleRelTypes] = useState<Set<RelationshipType>>(new Set(relTypes));
   const [minAttention, setMinAttention] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
+  // Bumped every time a new cytoscape instance is built, so the selection effects
+  // below re-apply their classes to the fresh instance.
+  const [graphInstance, setGraphInstance] = useState(0);
+  // Bumped once the initial cose run has settled. Centering the viewport before
+  // that point is pointless - the layout's own fit would override it.
+  const [layoutSettled, setLayoutSettled] = useState(0);
+
+  /*
+    react-router rebuilds `setSearchParams` whenever the query string changes, so
+    it cannot be used as a dependency of the cytoscape init effect - every node
+    click would change its identity, tear the graph down and re-run the layout.
+    Keeping the latest copy in a ref lets the tap handlers call it while the init
+    effect depends only on the graph data itself.
+  */
+  const setSearchParamsRef = useRef(setSearchParams);
+  useEffect(() => {
+    setSearchParamsRef.current = setSearchParams;
+  }, [setSearchParams]);
+
+  /*
+    The URL is the single source of truth for the current selection. Without this
+    sync, picking a result in global search or an alert while already on this page
+    would update the query string but leave the detail panel on the old entity,
+    because `selectedEntity` was only ever seeded from the initial render. It also
+    makes browser back/forward work.
+  */
+  const entityParam = searchParams.get('entity');
+  useEffect(() => {
+    setSelectedEntity(entityParam);
+  }, [entityParam]);
 
   // Build graph data
   const elements = useMemo(() => {
@@ -180,7 +210,15 @@ export function NetworkAnalysis() {
             'border-opacity': 1,
             'background-opacity': 1,
             'line-opacity': 0.8,
-            'line-width': 3,
+          },
+        },
+        {
+          // Edge thickness in cytoscape is `width`, not `line-width`. It has to be
+          // scoped to edges, otherwise it would also override the attention-score
+          // node sizing defined in the `node` block above.
+          selector: 'edge.highlighted',
+          style: {
+            'width': 3,
           },
         },
         {
@@ -196,9 +234,14 @@ export function NetworkAnalysis() {
             'border-color': '#fbbf24',
             'border-width': 3,
             'line-color': '#fbbf24',
-            'line-width': 4,
             'line-opacity': 1,
             'target-arrow-color': '#fbbf24',
+          },
+        },
+        {
+          selector: 'edge.path-highlight',
+          style: {
+            'width': 4,
           },
         },
       ],
@@ -207,24 +250,23 @@ export function NetworkAnalysis() {
     });
 
     cyRef.current = cy;
+    setGraphInstance(n => n + 1);
+
+    // Highlighting and centering are handled by the selection effects below, so
+    // the tap handlers only have to record what was picked. `cose` is animated and
+    // fits the viewport when it ends, so defer centering until it has stopped.
+    cy.one('layoutstop', () => setLayoutSettled(n => n + 1));
 
     cy.on('tap', 'node', (evt: EventObject) => {
-      const id = evt.target.id();
-      setSelectedEntity(id as string);
-      setSearchParams({ entity: id as string });
-      if (highlightNeighbors) {
-        cy.elements().removeClass('highlighted faded');
-        const neighbors = cy.getElementById(id).neighborhood();
-        cy.elements().addClass('faded');
-        cy.getElementById(id).removeClass('faded').addClass('highlighted');
-        neighbors.removeClass('faded').addClass('highlighted');
-      }
+      const id = evt.target.id() as string;
+      setSelectedEntity(id);
+      setSearchParamsRef.current({ entity: id });
     });
 
     cy.on('tap', (evt: EventObject) => {
       if (evt.target === cy) {
         setSelectedEntity(null);
-        setSearchParams({});
+        setSearchParamsRef.current({});
         cy.elements().removeClass('highlighted faded path-highlight');
       }
     });
@@ -233,22 +275,39 @@ export function NetworkAnalysis() {
       cy.destroy();
       cyRef.current = null;
     };
-  }, [elements, highlightNeighbors, setSearchParams]);
+    // Rebuild only when the graph data actually changes. Anything else belongs in
+    // a separate effect - recreating the instance re-runs the whole cose layout.
+  }, [elements]);
 
-  // Handle external entity selection (from search)
+  // Apply highlight / fade classes for the current selection. Gated on the
+  // instance counter rather than on the layout, so highlighting keeps working
+  // even if the layout never reports that it stopped.
   useEffect(() => {
-    if (!cyRef.current || !selectedEntity) return;
     const cy = cyRef.current;
+    if (!cy || graphInstance === 0) return;
+
+    cy.elements().removeClass('highlighted faded');
+    if (!selectedEntity || !highlightNeighbors) return;
+
     const node = cy.getElementById(selectedEntity);
-    if (node.length > 0) {
-      cy.animate({ center: { eles: node }, zoom: 1.5 }, { duration: 300 });
-      cy.elements().removeClass('highlighted faded');
-      const neighbors = node.neighborhood();
-      cy.elements().addClass('faded');
-      node.removeClass('faded').addClass('highlighted');
-      neighbors.removeClass('faded').addClass('highlighted');
-    }
-  }, [selectedEntity]);
+    if (node.length === 0) return;
+
+    cy.elements().addClass('faded');
+    node.removeClass('faded').addClass('highlighted');
+    node.neighborhood().removeClass('faded').addClass('highlighted');
+  }, [selectedEntity, highlightNeighbors, graphInstance]);
+
+  // Bring the selected entity into view. Deliberately separate from the effect
+  // above so toggling "highlight neighbours" does not yank the viewport around.
+  useEffect(() => {
+    const cy = cyRef.current;
+    if (!cy || layoutSettled === 0 || !selectedEntity) return;
+
+    const node = cy.getElementById(selectedEntity);
+    if (node.length === 0) return;
+
+    cy.animate({ center: { eles: node }, zoom: 1.5 }, { duration: 300 });
+  }, [selectedEntity, layoutSettled]);
 
   // Apply search filter
   useEffect(() => {

@@ -1,7 +1,8 @@
 {
-  "name": "vite-react-typescript-starter",
+  "name": "criminal-network-analysis",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "description": "AI-Powered Criminal Network Analysis - an investigator-oriented intelligence analysis prototype running entirely on synthetic data.",
   "type": "module",
   "scripts": {
     "dev": "vite",
